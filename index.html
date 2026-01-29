@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ビジネスマネジメント 記述式クイズ</title>
+
+<style>
+  body {
+    font-family: sans-serif;
+    margin: 0;
+    padding: 16px;
+    background: #f4f4f4;
+  }
+  .container {
+    max-width: 700px;
+    margin: auto;
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+  }
+  h1 { text-align: center; }
+
+  #question {
+    margin: 16px 0;
+    padding: 14px;
+    min-height: 40px;
+    background: #fafafa;
+    border: 2px solid #333;
+    border-radius: 6px;
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #000;
+    display: block !important;
+    visibility: visible !important;
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  textarea { width: 100%; height: 90px; font-size: 1rem; }
+  button { margin-top: 10px; padding: 10px; font-size: 1rem; width: 100%; }
+  
+  #nextButton {
+    background: #4caf50;
+    color: white;
+    border: none;
+    cursor: pointer;
+  }
+  
+  #nextButton:hover {
+    background: #45a049;
+  }
+  
+  #nextSetButton {
+    background: #2196f3;
+    color: white;
+    border: none;
+    cursor: pointer;
+    margin-top: 15px;
+  }
+  
+  #nextSetButton:hover {
+    background: #1976d2;
+  }
+
+  .hidden { display: none; }
+
+  #progress { margin-top: 10px; font-size: 0.9rem; color: #555; }
+  #model {
+    margin-top: 10px;
+    padding: 10px;
+    background: #eef;
+    border-radius: 5px;
+  }
+  
+  #errorMessage {
+    margin-top: 10px;
+    padding: 10px;
+    background: #ffebee;
+    border: 1px solid #f44336;
+    border-radius: 5px;
+    color: #c62828;
+    font-size: 0.95rem;
+  }
+  
+  #scoreDisplay {
+    margin-top: 20px;
+    padding: 20px;
+    background: #e8f5e9;
+    border: 2px solid #4caf50;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1.2rem;
+  }
+  
+  #scoreDisplay h2 {
+    margin: 0 0 10px 0;
+    color: #2e7d32;
+  }
+  
+  #scoreDisplay p {
+    margin: 5px 0;
+    font-size: 1.1rem;
+  }
+  
+  #scoreDisplay .percentage {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1b5e20;
+    margin: 10px 0;
+  }
+  
+  #incorrectList {
+    margin-top: 20px;
+    padding: 20px;
+    background: #ffebee;
+    border: 2px solid #f44336;
+    border-radius: 8px;
+    text-align: left;
+  }
+  
+  #incorrectList h3 {
+    margin: 0 0 15px 0;
+    color: #c62828;
+    text-align: center;
+  }
+  
+  .incorrect-item {
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #fff;
+    border-left: 4px solid #f44336;
+    border-radius: 4px;
+  }
+  
+  .incorrect-item .question-text {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  
+  .incorrect-item .answer-text {
+    color: #666;
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>ビジネスマネジメント<br>記述式クイズ</h1>
+
+  <div id="question"></div>
+  <textarea id="answer" placeholder="答えを入力"></textarea>
+  <button id="checkButton" onclick="checkAnswer()">答え合わせ</button>
+  <button id="nextButton" class="hidden" onclick="nextQuestion()">次の問題へ →</button>
+  
+  <div id="errorMessage" class="hidden"></div>
+  <div id="result"></div>
+  <div id="model" class="hidden"></div>
+  <div id="progress"></div>
+  <div id="scoreDisplay" class="hidden"></div>
+  <div id="incorrectList" class="hidden"></div>
+  <button id="nextSetButton" class="hidden" onclick="startNextSet()">もう一度15問に挑戦 🔄</button>
+</div>
+
+<script>
+const quiz = [];
+</script>
+
+<script>
+// ===== 問題データ(説明文→単語形式) =====
+const quizData = [
+  {q:"計画→実行→評価→改善を繰り返す管理手法",a:["pdca","サイクル"],model:"PDCAサイクル"},
+  {q:"組織の目標を効率的・効果的に達成すること",a:["マネジメント","管理"],model:"マネジメント"},
+  {q:"人・物・金が経営資源の基本3要素",a:["経営資源","3要素"],model:"経営資源の3要素(人・物・金)"},
+  {q:"企業の存在意義や価値観を示す基本的な考え方",a:["経営理念","理念"],model:"経営理念"},
+  {q:"共通の目的を達成するために結成された集団",a:["組織"],model:"組織"},
+  {q:"集団に影響を与え目標達成へ導く力",a:["リーダーシップ"],model:"リーダーシップ"},
+  {q:"人が行動を起こすための動機や意欲",a:["モチベーション","動機"],model:"モチベーション"},
+  {q:"職場で実務を通して行う教育訓練",a:["ojt"],model:"OJT(On the Job Training)"},
+  {q:"職場を離れて行う教育訓練",a:["off-jt","研修"],model:"OFF-JT"},
+  {q:"複数の代替案から最適なものを選ぶこと",a:["意思決定","決定"],model:"意思決定"},
+  {q:"企業内部の人材や設備などの環境",a:["内部環境"],model:"内部環境"},
+  {q:"企業を取り巻く社会や市場などの環境",a:["外部環境"],model:"外部環境"},
+  {q:"目標を設定し達成状況を管理する手法",a:["目標管理"],model:"目標管理"},
+  {q:"法令や社会規範を守ること",a:["コンプライアンス","遵守"],model:"コンプライアンス"},
+  {q:"企業の社会的責任",a:["csr","社会的責任"],model:"CSR(Corporate Social Responsibility)"},
+  {q:"自社の強み",a:["強み","strength"],model:"強み(Strength)"},
+  {q:"自社の弱み",a:["弱み","weakness"],model:"弱み(Weakness)"},
+  {q:"外部環境における機会",a:["機会","opportunity"],model:"機会(Opportunity)"},
+  {q:"外部環境における脅威",a:["脅威","threat"],model:"脅威(Threat)"},
+  {q:"人の不注意などによるミス",a:["ヒューマンエラー","人為"],model:"ヒューマンエラー"},
+  {q:"品質管理の略称",a:["qc","quality"],model:"QC(Quality Control)"},
+  {q:"現状をより良くすること",a:["改善"],model:"改善"},
+  {q:"計画通りに進むよう調整・統制すること",a:["管理"],model:"管理"},
+  {q:"成果を重視して評価する制度",a:["成果主義"],model:"成果主義"},
+  {q:"組織全体で達成を目指す目標",a:["組織目標"],model:"組織目標"},
+  {q:"個人が達成を目指す目標",a:["個人目標"],model:"個人目標"},
+  {q:"将来に向けた行動を事前に定めること",a:["計画"],model:"計画"},
+  {q:"基準と比較して良し悪しを判断すること",a:["評価"],model:"評価"},
+  {q:"業務の効率や成果を高めること",a:["改善活動"],model:"改善活動"},
+  {q:"PDCAを繰り返す管理の循環",a:["マネジメントサイクル","サイクル"],model:"マネジメントサイクル"},
+  {q:"作業を分け効率と責任を明確にすること",a:["職務分担","分担"],model:"職務分担"},
+  {q:"既存市場において既存商品を深掘りする戦略",a:["市場浸透"],model:"市場浸透"},
+  {q:"既存市場に対して新規商品を導入する戦略",a:["製品開発","新製品開発"],model:"製品開発(新製品開発)"},
+  {q:"既存商品を新市場に進出させる戦略",a:["市場開発"],model:"市場開発"},
+  {q:"新規商品を新市場に導入する戦略",a:["多角化"],model:"多角化"},
+  {q:"製品企画から開発・販売まで一連のプロセスを統合管理する考え方",a:["統合管理"],model:"統合管理"},
+  {q:"長期的に市場で購入することで獲得される協力的で定的な取引関係",a:["取引関係"],model:"長期的な取引関係"},
+  {q:"市場で購入していた製品を内製に切り替えることは何といいますか",a:["内製化"],model:"内製化"},
+  {q:"部品の調達方法について他社から購入することを何といいますか",a:["外部調達"],model:"外部調達"},
+  {q:"市場調査方法について既存データをもとに行う方法",a:["デスク調査"],model:"デスク調査"},
+  {q:"市場調査方法について現地や消費者を対象に行う調査",a:["フィールド調査"],model:"フィールド調査"},
+  {q:"他社の強み（長所）を学ぶ経営方針",a:["ベンチマーキング"],model:"ベンチマーキング"},
+  {q:"新製品開発に実施される研究開発費",a:["新製品開発費"],model:"新製品開発費"},
+  {q:"既存製品の改良・改善に実施される研究開発費",a:["改良改善費"],model:"改良改善費"},
+  {q:"消費者の購買行動において多くの企業が結びついている受領的なもの",a:["ライフスタイル"],model:"ライフスタイル"},
+  {q:"消費者心理において自分たちが他の人と同じように行動したいという欲求",a:["同調欲求"],model:"同調欲求"},
+  {q:"企業が株式を発行し資金を調達する方法",a:["株式発行"],model:"株式発行"},
+  {q:"企業が銀行から借り入れる資金調達方法",a:["銀行借入"],model:"銀行借入"},
+  {q:"市場で既存株式を買い入れる資金調達方法",a:["自社株買い"],model:"自社株買い"},
+  {q:"市場で出資者から資金を調達する方法",a:["市場調達"],model:"市場調達"},
+  {q:"金融市場における資金供給の変動に関わる要因",a:["金融市場"],model:"金融市場"},
+  {q:"スワップやデリバティブなどの金利リスク回避方法",a:["スワップ","デリバティブ"],model:"スワップ(金利リスク回避)"},
+  {q:"企業が多くの業種や分野に事業領域を拡大することを何といいますか",a:["多角化"],model:"多角化"},
+  {q:"内部統制において財務報告の監査のプロセスを説明すること",a:["内部監査"],model:"内部監査"},
+  {q:"企業の管理会計において内部報告の目的で作成される財務情報",a:["管理会計"],model:"管理会計"},
+  {q:"事業内容ごとに異なるポジションを持つ企業の戦略",a:["事業ポートフォリオ"],model:"事業ポートフォリオ"},
+  {q:"生産の国際化および拠点の配置による企業の地理的に分散した構造",a:["事業構造"],model:"事業構造"},
+  {q:"事業の生産段階を複数企業で組む形の関係",a:["事業提携"],model:"事業提携"},
+  {q:"複数の企業が協力するパターンの1つで多数の企業が結ぶ場合",a:["提携"],model:"複数企業の提携"},
+  {q:"複合的な環境制約を持たない新たな事業を展開すること",a:["新規事業開発"],model:"新規事業開発"},
+  {q:"マスメディアなどの資源や手段の活用を考えるリーダーシップの内容",a:["情報系リーダーシップ"],model:"情報系リーダーシップ"},
+  {q:"組織全体の効率性を高め成果達成にあたる権限の分散方法",a:["権限委譲"],model:"権限委譲"},
+  {q:"部下の行動や思考を変えたり高めたりすることの目的",a:["部下育成"],model:"部下育成"},
+  {q:"リーダーが示すべき行動で部下の能力や適性を育成すること",a:["育成的行動"],model:"育成的行動"},
+  {q:"部下のやる気や能力を評価する際の基準",a:["評価基準"],model:"評価基準"},
+  {q:"設定された目標と部下の能力を対応させた適正な目標設定方法",a:["目標設定"],model:"目標設定"},
+  {q:"部下育成において直属上司などから必要なサポートを受ける仕組み",a:["メンタリング"],model:"メンタリング"},
+  {q:"部門間の様々な役割の1つで部門の職務内容を担当する人",a:["職務担当"],model:"職務担当"},
+  {q:"部門長の責任は部下の職務内容に対する指示出しと何を含むか",a:["監督"],model:"指示出しと監督"},
+  {q:"タスク自体に対する興味と動機が駆動される動機づけの何といいますか",a:["内発的動機づけ"],model:"内発的動機づけ"},
+  {q:"技術や知識の変化が大きく急速に進化していく業種の傾向",a:["技術進歩"],model:"技術進歩"},
+  {q:"技術や知識の変化に対応するためのリーダーシップに必要な能力",a:["適応能力"],model:"適応能力"},
+  {q:"組織変更における人材や資源などの課題を識別する手法",a:["課題分析"],model:"課題分析"},
+  {q:"組織変更において既存の運営方法を持続させ新規案を導入する角度の考え方",a:["段階的導入"],model:"段階的導入"},
+  {q:"組織変更において既存の事業と新規事業の両立を考える視点",a:["両立視点","並行運営"],model:"両立視点(並行運営)"},
+  {q:"時間の経過とともに上司の役割や関係を変えていくプロセス",a:["プロセス進展"],model:"プロセス進展"},
+  {q:"与えられた権限責任を行使し部下の職務実現の支援と動機づけを行う者の役割",a:["監督者"],model:"監督者の役割"},
+  {q:"マーケティング活動において複雑な環境に対応するための実行戦略",a:["対応戦略"],model:"対応戦略"},
+  {q:"市場浸透・新商品開発・市場開発・多角化の4つに分けられるマトリックス",a:["アンゾフマトリックス"],model:"アンゾフマトリックス"},
+  {q:"営業部門の中に複数のグループを配置しグループ内での士気を醸成する際に生じる現象",a:["グループ内凝集"],model:"グループ内凝集"},
+  {q:"企業の業績に関わる主要な指標である経営指標",a:["経営指標"],model:"経営指標"},
+  {q:"市場ニーズと企業能力を組み合わせた新製品開発の基本的な考え方",a:["市場志向"],model:"市場志向"},
+  {q:"複数の業種や分野において企業の事業領域を拡大するリスク管理方法",a:["リスク分散"],model:"リスク分散"},
+  {q:"事業継続計画（BCP）の実施においてリーダーシップの判断が重要になる場面",a:["危機管理"],model:"危機管理"},
+  {q:"質的調査法において顧客の行動や心理の解釈を理解するための手法",a:["定性調査"],model:"定性調査"},
+  {q:"顧客の行動分析で複数の消費者グループを識別する方法",a:["セグメンテーション"],model:"セグメンテーション"},
+  {q:"市場の成長率と市場シェアの2軸で企業の事業を分析するマトリックス",a:["ppm"],model:"PPM(プロダクト・ポートフォリオ・マネジメント)"},
+  {q:"競争優位性の源泉として企業が保有する独自の資源や能力",a:["コア・コンピタンス"],model:"コア・コンピタンス"},
+  {q:"複数の企業が同一または相似の製品を供給する際の価格競争戦略",a:["価格競争"],model:"価格競争"},
+  {q:"提供する製品やサービスの差別化により競争優位を確保する戦略",a:["差別化"],model:"差別化戦略"},
+  {q:"組織内で経営資源の最適配分を実現するための管理手法",a:["リソース管理"],model:"リソース管理"},
+  {q:"変化する市場環境に柔軟に対応できる経営組織の構造",a:["アジャイル"],model:"アジャイル組織"},
+  {q:"企業の経営活動をデータに基づいて意思決定する方法論",a:["データドリブン"],model:"データドリブン"},
+  {q:"カスタマーサクセスを重視して顧客の成功を支援するビジネスモデル",a:["カスタマーサクセス"],model:"カスタマーサクセス"},
+  {q:"デジタル技術を活用して業務プロセスを根本的に改善する取り組み",a:["デジタル化","dx"],model:"デジタルトランスフォーメーション(DX)"},
+  {q:"顧客体験を高めるための全体的なアプローチで接点での満足度を向上させる方法",a:["顧客体験","cx"],model:"カスタマー・エクスペリエンス(CX)"}
+];
+
+// ===== 15問区切り設定 =====
+const SET_SIZE = 15;
+let order = [];
+let index = 0;
+let setIndex = 0;
+let checked = false;
+let correctCount = 0; // 正解数をカウント
+let incorrectQuestions = []; // 間違えた問題を記録
+
+function startSet() {
+  // 毎回問題をシャッフル
+  order = [...Array(quizData.length).keys()];
+  order.sort(() => Math.random() - 0.5);
+  
+  // インデックスを0にリセット（シャッフル済みの配列を使用）
+  index = 0;
+  correctCount = 0; // リセット
+  incorrectQuestions = []; // リセット
+  
+  // 画面をリセット
+  document.getElementById('scoreDisplay').classList.add('hidden');
+  document.getElementById('incorrectList').classList.add('hidden');
+  document.getElementById('nextSetButton').classList.add('hidden');
+  document.getElementById('answer').style.display = 'block';
+  document.getElementById('checkButton').style.display = 'block';
+  document.getElementById('checkButton').classList.remove('hidden');
+  document.getElementById('nextButton').style.display = 'block';
+  document.getElementById('nextButton').classList.add('hidden');
+  document.getElementById('result').style.display = 'block';
+  document.getElementById('model').style.display = 'none';
+  document.getElementById('progress').style.display = 'block';
+  document.getElementById('errorMessage').classList.add('hidden');
+  document.getElementById('errorMessage').style.display = 'none';
+  
+  showQuestion();
+}
+
+function showQuestion() {
+  const qElm = document.getElementById('question');
+  const q = quizData[order[index]];
+  if (!q) {
+    qElm.textContent = "このセットは終了です";
+    return;
+  }
+  qElm.textContent = q.q;
+  document.getElementById('answer').value = '';
+  document.getElementById('result').textContent = '';
+  
+  // 模範解答を確実にリセット
+  const modelElm = document.getElementById('model');
+  modelElm.textContent = '';
+  modelElm.classList.add('hidden');
+  
+  document.getElementById('errorMessage').classList.add('hidden');
+  document.getElementById('progress').textContent =
+    `${index + 1} / ${SET_SIZE}問目`;
+  checked = false;
+  
+  // ボタンの表示制御
+  document.getElementById('checkButton').classList.remove('hidden');
+  document.getElementById('nextButton').classList.add('hidden');
+  
+  // 回答欄にフォーカス
+  document.getElementById('answer').focus();
+}
+
+function checkAnswer() {
+  if (checked) return;
+
+  const user = document.getElementById('answer').value.trim();
+  const errorMessage = document.getElementById('errorMessage');
+  
+  // 回答が空かどうかをチェック
+  if (user === '') {
+    errorMessage.textContent = '⚠️ 回答を入力してください';
+    errorMessage.classList.remove('hidden');
+    return;
+  }
+  
+  // エラーメッセージを非表示
+  errorMessage.classList.add('hidden');
+  
+  const userLower = user.toLowerCase();
+  const q = quizData[order[index]];
+  const result = document.getElementById('result');
+  const model = document.getElementById('model');
+
+  const correct = q.a.some(word => userLower.includes(word));
+  result.textContent = correct ? "⭕ 正解!" : "❌ 不正解";
+  
+  // 模範解答を確実に表示
+  model.textContent = "模範解答: " + q.model;
+  model.style.display = 'block';
+  model.classList.remove('hidden');
+
+  // 正解数をカウント
+  if (correct) {
+    correctCount++;
+  } else {
+    // 間違えた問題を記録
+    incorrectQuestions.push({
+      question: q.q,
+      model: q.model
+    });
+  }
+
+  checked = true;
+  
+  // ボタンの表示切り替え
+  document.getElementById('checkButton').classList.add('hidden');
+  document.getElementById('nextButton').classList.remove('hidden');
+  
+  // 次の問題へボタンにフォーカス
+  document.getElementById('nextButton').focus();
+}
+
+function nextQuestion() {
+  index++;
+  
+  if (index < SET_SIZE && quizData[order[index]]) {
+    showQuestion();
+  } else {
+    // 15問終了時に結果を表示
+    showFinalScore();
+  }
+}
+
+function showFinalScore() {
+  const qElm = document.getElementById('question');
+  const scoreDisplay = document.getElementById('scoreDisplay');
+  const incorrectList = document.getElementById('incorrectList');
+  const nextSetButton = document.getElementById('nextSetButton');
+  const actualQuestions = Math.min(index, SET_SIZE);
+  const percentage = Math.round((correctCount / actualQuestions) * 100);
+  
+  qElm.textContent = actualQuestions + "問終了!";
+  
+  scoreDisplay.innerHTML = `
+    <h2>🎉 結果発表 🎉</h2>
+    <p>正解数: <strong>${correctCount}</strong> / ${actualQuestions}問</p>
+    <div class="percentage">${percentage}%</div>
+    <p style="margin-top: 15px; font-size: 0.9rem; color: #666;">
+      問題はランダムにシャッフルされるので、何度でも挑戦できます！
+    </p>
+  `;
+  scoreDisplay.classList.remove('hidden');
+  
+  // 間違えた問題の一覧を表示
+  if (incorrectQuestions.length > 0) {
+    let incorrectHTML = '<h3>❌ 間違えた問題一覧</h3>';
+    incorrectQuestions.forEach((item, idx) => {
+      incorrectHTML += `
+        <div class="incorrect-item">
+          <div class="question-text">${idx + 1}. ${item.question}</div>
+          <div class="answer-text">模範解答: ${item.model}</div>
+        </div>
+      `;
+    });
+    incorrectList.innerHTML = incorrectHTML;
+    incorrectList.classList.remove('hidden');
+  }
+  
+  // 常に次のセットへのボタンを表示（問題は毎回シャッフルされる）
+  nextSetButton.classList.remove('hidden');
+  nextSetButton.focus();
+  
+  // 入力欄とボタンを非表示
+  document.getElementById('answer').style.display = 'none';
+  document.getElementById('checkButton').style.display = 'none';
+  document.getElementById('nextButton').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('model').style.display = 'none';
+  document.getElementById('progress').style.display = 'none';
+  document.getElementById('errorMessage').style.display = 'none';
+}
+
+function startNextSet() {
+  startSet();
+}
+
+// Enterキーのイベントリスナーを追加
+document.addEventListener('DOMContentLoaded', function() {
+  const answerField = document.getElementById('answer');
+  const checkButton = document.getElementById('checkButton');
+  const nextButton = document.getElementById('nextButton');
+  
+  // テキストエリアでのEnterキー処理
+  answerField.addEventListener('keydown', function(event) {
+    // Ctrl+EnterまたはShift+Enterの場合は改行を許可
+    if (event.ctrlKey || event.shiftKey) {
+      return;
+    }
+    
+    // Enterキーが押された場合
+    if (event.key === 'Enter') {
+      event.preventDefault(); // デフォルトの改行を防ぐ
+      
+      // 答え合わせボタンが表示されている場合
+      if (!checkButton.classList.contains('hidden')) {
+        checkAnswer();
+      }
+      // 次の問題へボタンが表示されている場合
+      else if (!nextButton.classList.contains('hidden')) {
+        nextQuestion();
+      }
+    }
+  });
+  
+  // 次の問題へボタンでのEnterキー処理
+  nextButton.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      nextQuestion();
+    }
+  });
+  
+  // 次のセットへボタンでのEnterキー処理
+  document.getElementById('nextSetButton').addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      startNextSet();
+    }
+  });
+});
+
+window.onload = startSet;
+</script>
+</body>
+</html>
